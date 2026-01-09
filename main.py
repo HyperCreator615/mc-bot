@@ -1,5 +1,4 @@
-from minecraft.networking.connection import Connection
-from minecraft.networking.packets import clientbound, serverbound
+from pycraft import Client
 import time
 import threading
 
@@ -8,43 +7,37 @@ PORT = 25565
 USERNAME = "Martin-AFK-BOT"
 PASSWORD = "chatgpt.chadgpt"
 
-def start_bot():
-    print("Starting bot...")
-    connection = Connection(
-        SERVER,
-        PORT,
-        username=USERNAME,
-        auth_token=None  # cracked server
-    )
+def run_bot():
+    client = Client()
 
-    @connection.listener(clientbound.play.JoinGamePacket)
-    def on_join_game(packet):
-        print("Bot joined the server")
+    def on_join():
+        print("Bot joined")
 
         def login_and_afk():
             time.sleep(3)
-            connection.write_packet(
-                serverbound.play.ChatPacket(f"/register {PASSWORD}")
-            )
-            connection.write_packet(
-                serverbound.play.ChatPacket(f"/login {PASSWORD}")
-            )
+            client.chat(f"/register {PASSWORD}")
+            client.chat(f"/login {PASSWORD}")
 
-            # anti-AFK loop
             while True:
                 time.sleep(60)
-                connection.write_packet(
-                    serverbound.play.ChatPacket("/jump")
-                )
+                client.chat(" ")
 
         threading.Thread(target=login_and_afk).start()
 
-    @connection.listener(clientbound.login.DisconnectPacket)
-    def on_disconnect(packet):
-        print("Disconnected, reconnecting in 5s...")
+    def on_disconnect(reason):
+        print("Disconnected:", reason)
         time.sleep(5)
-        start_bot()
+        run_bot()
 
-    connection.connect()
+    client.on_join = on_join
+    client.on_disconnect = on_disconnect
 
-start_bot()
+    client.connect(
+        SERVER,
+        PORT,
+        USERNAME,
+        auth=False  # cracked server
+    )
+
+run_bot()
+
